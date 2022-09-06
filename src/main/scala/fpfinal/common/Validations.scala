@@ -1,8 +1,10 @@
 package fpfinal.common
 
 import cats.Order
+import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyChain, NonEmptySet, Validated}
 import fpfinal.app.Configuration.IsValid
+import cats.implicits._
 
 import scala.collection.immutable.SortedSet
 
@@ -14,13 +16,24 @@ object Validations {
     * TODO #1: Check that this String's length does not exceed the provided limit.
     */
   def maxLength(s: String, n: Int): IsValid[String] =
-    ???
+    s.length > n match {
+      case true => "s.length > n".invalidNec
+      case false => Valid(s)
+    }
 
   /**
     * TODO #2: Turn this String into a validated double
     */
   def double(s: String): IsValid[Double] =
-    ???
+    try{
+      //s.toDouble.validNec
+      Validated.valid(s.toDouble)
+    }
+    catch {
+      case e =>
+        //e.toString.invalidNec
+        Validated.invalid(NonEmptyChain(e.toString))
+    }
 
   /**
    * Validates that a Double is >= 0

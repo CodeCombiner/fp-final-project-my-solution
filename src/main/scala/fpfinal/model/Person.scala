@@ -1,6 +1,8 @@
 package fpfinal.model
 
 import cats._
+import cats.data.{NonEmptyChain, Validated}
+import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
 import fpfinal.app.Configuration.IsValid
 import fpfinal.common.Validations._
@@ -33,7 +35,22 @@ object Person {
     * - The name should only contain letters
     * - The name should be at most 32 chars long
     */
-  def create(name: String): IsValid[Person] = ???
+  def create(name: String): IsValid[Person] = {
+      //Accumulating errors in fast way
+    (Validated.cond(name.nonEmpty, name, NonEmptyChain("The name can not be empty")),
+      Validated.cond(containsNoSpecialChars(name), name, NonEmptyChain("The string shell not contain special characters")),
+      Validated.cond(name.length < 32, name, NonEmptyChain("Name can not be longer than 32 characters")))
+      .tupled
+      .andThen(validatedName => Valid(Person.unsafeCreate(validatedName._1)))
+
+  }
+
+
+
+  def containsNoSpecialChars(string: String): Boolean = {
+    val pattern = "^[a-zA-Z0-9]*$".r
+    pattern.findAllIn(string).mkString.length == string.length
+  }
 
   implicit val showPerson: Show[Person] = Show.show(_.name)
 

@@ -9,6 +9,7 @@ import fpfinal.common.IO.{Done, FlatMap, More}
 import fpfinal.model._
 import fpfinal.service.ExpenseService.{ExpenseOp, ExpenseState}
 import fpfinal.service.PersonService.{PersonOp, PersonState}
+import org.scalacheck.Gen.listOfN
 import org.scalacheck.{Arbitrary, Gen}
 
 trait Generators {
@@ -20,7 +21,22 @@ trait Generators {
     * care of only producing valid values (check out
     * the constraints in Person.create) .
     */
-  implicit val personArb: Arbitrary[Person] = ???
+
+  case class ReadableChar(c: Char)
+  implicit val arbReadable: Arbitrary[ReadableChar] = Arbitrary {
+    val legalChars = Range('a', 'z').map(_.toChar)
+    for {
+      c <- Gen.oneOf(legalChars)
+    } yield ReadableChar(c)
+  }
+
+  val strGen = (n: Int) => Gen.listOfN(n, arbReadable).map(_.mkString)
+
+  implicit val personArb: Arbitrary[Person] = Arbitrary{
+    val charNum = Gen.choose(1, 30.toInt)
+    charNum.flatMap(num => strGen(num).map(Person.unsafeCreate(_)))
+
+  }
 
   implicit val moneyArb: Arbitrary[Money] = Arbitrary {
     Gen.choose(1, 1e9.toInt).map(Money.unsafeCreate)
@@ -33,7 +49,18 @@ trait Generators {
   implicit def expenseArb(implicit
       arbPerson: Arbitrary[Person],
       arbMoney: Arbitrary[Money]
-  ): Arbitrary[Expense] = ???
+  ): Arbitrary[Expense] = Arbitrary{
+    //Gen.choose(1, 30.toInt)
+    // .flatMap( personsNumber => listOfN(personsNumber, arbPerson.arbitrary)
+    // .flatMap(persons => arbMoney.arbitrary
+    // .map(money => Expense.unsafeCreate(persons.head, money, persons.tail ))))
+    // rewrite for comfortable reading
+    for {
+      personsNumber <- Gen.choose(1, 30.toInt)
+      personsList <-  listOfN(personsNumber, arbPerson.arbitrary)
+      money <-  arbMoney.arbitrary
+    } yield Expense.unsafeCreate(personsList.head, money, personsList.tail )
+  }
 
   implicit val payeeDebtArb: Arbitrary[DebtByPayee] = Arbitrary {
     Gen
@@ -101,7 +128,14 @@ trait Generators {
   implicit def personOpArb[A](implicit
       arbA: Arbitrary[A],
       arbPersonState: Arbitrary[PersonState]
-  ): Arbitrary[PersonOp[A]] = ???
+  ): Arbitrary[PersonOp[A]] = {
+    val gen = for {
+      arbData <- arbA.arbitrary
+      arbPersonsState <- arbPersonState.arbitrary
+      gen <- Arbitrary[PersonOp[A]](State[PersonState, A]( state => (arbPersonsState, arbData))).arbitrary
+    } yield gen
+    Arbitrary(gen)
+  }
 
   implicit def isValidArb[A](implicit
       arbA: Arbitrary[A]

@@ -18,7 +18,7 @@ class PersonSpec extends FpFinalSpec {
     }
   }
 
-  test("create invalid person with empty name") {
+  test("create invalid person with empty name") {q
     assert(Person.create("").isInvalid)
   }
 
