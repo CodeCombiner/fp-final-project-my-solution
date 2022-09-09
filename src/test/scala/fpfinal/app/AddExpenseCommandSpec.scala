@@ -10,6 +10,11 @@ import fpfinal.service.PersonService.PersonState
 class AddExpenseCommandSpec extends FpFinalSpec {
   test("Add expense command reads data and adds a expense") {
     forAll { (s: AppState) =>
+      val expense = Expense.unsafeCreate(
+        Person.unsafeCreate("Leandro"),
+        Money.unsafeCreate(200000),
+        List(Person.unsafeCreate("Martin"), Person.unsafeCreate("Susan"))
+      )
       val initialAppState = s.copy(personState =
         PersonState(
           Map(
@@ -19,6 +24,7 @@ class AddExpenseCommandSpec extends FpFinalSpec {
           )
         )
       )
+        //.copy(expenseState = s.expenseState.copy(expenses = expense :: s.expenseState.expenses))
       val env = new FakeEnv {
         override var linesToRead: List[String] = List(
           "Leandro", // The payer
@@ -28,18 +34,14 @@ class AddExpenseCommandSpec extends FpFinalSpec {
           "END" // No more participants
         )
       }
-      val expense = Expense.unsafeCreate(
-        Person.unsafeCreate("Leandro"),
-        Money.unsafeCreate(200000),
-        List(Person.unsafeCreate("Martin"), Person.unsafeCreate("Susan"))
-      )
+
+      val x = AddExpenseCommand
+        .execute()
+        .unsafeRunAppS(env, initialAppState)
+        .map(_.expenseState.expenses)
+      val y = Right(expense :: s.expenseState.expenses)
       assert(
-        AddExpenseCommand
-          .execute()
-          .unsafeRunAppS(env, initialAppState)
-          .map(_.expenseState.expenses) eqv Right(
-          expense :: s.expenseState.expenses
-        )
+      x eqv y
       )
     }
   }

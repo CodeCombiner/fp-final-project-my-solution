@@ -4,7 +4,7 @@ import cats._
 import cats.data._
 import cats.implicits._
 import fpfinal.model.Person
-import fpfinal.service.PersonService.PersonOp
+import fpfinal.service.PersonService.{PersonOp, PersonState}
 
 /**
  * A trait for adding, storing and then finding people.
@@ -74,16 +74,25 @@ trait LivePersonService extends PersonService {
      * Finds a person with the given name, returning it if it finds it in the state,
      * or yielding None otherwise.
      */
-    override def findByName(name: String): PersonOp[Option[Person]] = ???
+    override def findByName(name: String): PersonOp[Option[Person]] = State {
+      state => (state, state.personByName.get(name))
+    }
+    //Short:
+    //State.inspect(_.personByName(name))
 
     /**
      * Adds a person to the state.
      */
-    override def addPerson(person: Person): PersonOp[Unit] = ???
+    override def addPerson(person: Person): PersonOp[Unit] =
+      State.modify(_.addPerson(person))
 
     /**
      * Returns all the people in the state.
      */
-    override def getAllPeople(): PersonOp[List[Person]] = ???
+    override def getAllPeople(): PersonOp[List[Person]] = State {
+      state => (state, state.personByName.values.toList)
+    }
+    //Short
+    //State.inspect(_.personByName.values.toList)
   }
 }

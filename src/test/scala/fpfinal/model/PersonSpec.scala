@@ -14,11 +14,12 @@ class PersonSpec extends FpFinalSpec {
     } yield s
 
     forAll(g) { (name: String) =>
+      println(name)
       assert(Person.create(name) eqv Valid(Person.unsafeCreate(name)))
     }
   }
 
-  test("create invalid person with empty name") {q
+  test("create invalid person with empty name") {
     assert(Person.create("").isInvalid)
   }
 

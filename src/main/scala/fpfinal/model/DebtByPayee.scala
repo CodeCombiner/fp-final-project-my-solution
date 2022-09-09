@@ -2,6 +2,8 @@ package fpfinal.model
 
 import cats._
 import cats.implicits._
+import cats.data._
+import cats.Monoid
 
 /**
  * This class holds information about how much money is owed by each Person.
@@ -23,12 +25,12 @@ class DebtByPayee private (val debtByPayee: Map[Person, Money]) {
   /**
     * TODO #12: Return the debt for this payee
     */
-  def debtForPayee(person: Person): Option[Money] = ???
+  def debtForPayee(person: Person): Option[Money] = debtByPayee.get(person)
 
   /**
     * TODO #13: Return all the payees as a list
     */
-  def allPayees(): List[Person] = ???
+  def allPayees(): List[Person] = debtByPayee.keys.toList
 }
 
 object DebtByPayee {
@@ -47,7 +49,11 @@ object DebtByPayee {
     * For simplicity we don't care about losing cents. For example, dividing 1 dollar
     * among 3 participants should yield 33 cents of debt for each participant.
     */
-  def fromExpense(expense: Expense): DebtByPayee = ???
+  def fromExpense(expense: Expense): DebtByPayee = {
+    val payees = expense.participants.toList
+    val map = payees.map(person => (person, expense.amount.divideBy(payees.length).get)).toMap
+    new DebtByPayee(map)
+  }
 
   /**
    * Creates an instance of DebtByPayee with exactly one payee and their debt.
@@ -63,7 +69,7 @@ object DebtByPayee {
     */
   implicit def eqDebtByPayee(implicit
       eqMap: Eq[Map[Person, Money]]
-  ): Eq[DebtByPayee] = ???
+  ): Eq[DebtByPayee] = Eq.instance[DebtByPayee]((x, y) => x.debtByPayee === x.debtByPayee)
 
   /**
     * TODO #16: Implement a monoid instance.
@@ -73,8 +79,9 @@ object DebtByPayee {
     */
   implicit def monoidDebtByPayee(implicit
       monoidMap: Monoid[Map[Person, Money]]
-  ): Monoid[DebtByPayee] =
-    ???
+  ): Monoid[DebtByPayee] = {
+      monoidMap.imap(m => new DebtByPayee(m))(_.debtByPayee)
+  }
 
   implicit def showDebtByPayee(implicit
       personShow: Show[Person],

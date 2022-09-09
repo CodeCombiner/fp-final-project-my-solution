@@ -4,7 +4,9 @@ import cats.data.Validated.Valid
 import cats.implicits._
 import cats.kernel.laws.discipline.EqTests
 import fpfinal.FpFinalSpec
+import org.scalacheck.Prop.forAllNoShrink
 import org.scalacheck.{Arbitrary, Gen}
+
 
 class ExpenseSpec extends FpFinalSpec {
   test("create a valid expense") {
@@ -12,11 +14,10 @@ class ExpenseSpec extends FpFinalSpec {
       for {
         payer <- implicitly[Arbitrary[Person]].arbitrary
         participants <- Gen.nonEmptyListOf(
-          implicitly[Arbitrary[Person]].arbitrary.filter(_ != payer)
+          implicitly[Arbitrary[Person]].arbitrary
         )
       } yield (payer, participants)
     }
-
     forAll { (money: Money, p: (Person, List[Person])) =>
       assert(
         Expense.create(p._1, money, p._2) === Valid(
@@ -44,6 +45,7 @@ class ExpenseSpec extends FpFinalSpec {
       Money.unsafeCreate(1000),
       List(Person.unsafeCreate("Susan"), Person.unsafeCreate("Bob"))
     )
+    println(e.show)
     assert(
       e.show eqv "Expense[Payer=Martin,Amount=$10.00,Participants=Bob,Susan]"
     )
@@ -59,4 +61,5 @@ class ExpenseSpec extends FpFinalSpec {
   }
 
   // TODO #10: Add the missing typeclass tests for Eq
+  checkAll("Eq[Expense]", EqTests[Expense].eqv)
 }

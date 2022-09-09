@@ -1,9 +1,11 @@
 package fpfinal.model
 
 import cats._
+import cats.data.Validated.Valid
 import cats.data._
 import cats.implicits._
 import fpfinal.app.Configuration.IsValid
+import fpfinal.common.Validations
 import fpfinal.common.Validations._
 
 import scala.collection.immutable.SortedSet
@@ -38,7 +40,7 @@ class Expense private (
     * For simplicity we don't care about losing cents. For example, dividing 1 dollar
     * among 3 participants should yield 33 cents of debt for each participant.
     */
-  def amountByParticipant: Money = ???
+  def amountByParticipant: Money = amount.divideBy(participants.length + 1).getOrElse(amount)
 }
 
 object Expense {
@@ -65,11 +67,23 @@ object Expense {
     * Note: List's contains method will use == equality. Figure out a way
     * to use the equality instance received in the implicit argument eqPerson
     */
+  import Person.eqPerson
   def create(
-      payer: Person,
-      amount: Money,
-      participants: List[Person]
-  )(implicit eqPerson: Eq[Person]): IsValid[Expense] = ???
+              payer: Person,
+              amount: Money,
+              participants: List[Person]
+            )(implicit eqPerson: Eq[Person]): IsValid[Expense] = {
+    (
+      nonEmptySet(participants),
+      Validated.condNec(
+        Foldable[List].forall(participants)(_ neqv payer),
+        payer,
+        "payer cannot be included in participants"
+      )
+      ).mapN { (ps, p) =>
+      new Expense(p, amount, ps)
+    }
+  }
 
   /**
     * TODO #9: Implement an Eq instance by comparing every field,
@@ -80,12 +94,20 @@ object Expense {
     eqPerson: Eq[Person],
     eqMoney: Eq[Money],
     eqParticipants: Eq[NonEmptySet[Person]]
-  ): Eq[Expense] = ???
+  ): Eq[Expense] =
+    Eq.instance((e1, e2) =>
+      e1.payer === e2.payer
+      && e1.amount === e2.amount
+      && e1.participants === e2.participants)
 
   /**
     * TODO #8: Implement a Show instance with the following format:
     *
     * Expense[Payer=Martin,Amount=$10.00,Participants=Bob,Susan]
     */
-  implicit val showExpense: Show[Expense] = ???
+  implicit val showExpense: Show[Expense] = Show.show { expense =>
+    s"""Expense[Payer=${expense.payer.name},Amount=${expense.amount},Participants=${expense.participants.map(_.name).mkString_(",")}]"""
+
+  }
+
 }

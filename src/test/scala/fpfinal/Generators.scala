@@ -23,18 +23,13 @@ trait Generators {
     */
 
   case class ReadableChar(c: Char)
-  implicit val arbReadable: Arbitrary[ReadableChar] = Arbitrary {
-    val legalChars = Range('a', 'z').map(_.toChar)
-    for {
-      c <- Gen.oneOf(legalChars)
-    } yield ReadableChar(c)
-  }
 
-  val strGen = (n: Int) => Gen.listOfN(n, arbReadable).map(_.mkString)
+
+  val strGen = (n: Int) => Gen.listOfN(n, Gen.alphaChar).map(_.mkString)
 
   implicit val personArb: Arbitrary[Person] = Arbitrary{
-    val charNum = Gen.choose(1, 30.toInt)
-    charNum.flatMap(num => strGen(num).map(Person.unsafeCreate(_)))
+    val charNum = Gen.choose(5, 30.toInt)
+    charNum.flatMap(num => strGen(num).map(s => Person.unsafeCreate(s)))
 
   }
 
@@ -50,16 +45,12 @@ trait Generators {
       arbPerson: Arbitrary[Person],
       arbMoney: Arbitrary[Money]
   ): Arbitrary[Expense] = Arbitrary{
-    //Gen.choose(1, 30.toInt)
-    // .flatMap( personsNumber => listOfN(personsNumber, arbPerson.arbitrary)
-    // .flatMap(persons => arbMoney.arbitrary
-    // .map(money => Expense.unsafeCreate(persons.head, money, persons.tail ))))
-    // rewrite for comfortable reading
     for {
       personsNumber <- Gen.choose(1, 30.toInt)
-      personsList <-  listOfN(personsNumber, arbPerson.arbitrary)
+      personsList <-  Gen.listOfN(personsNumber, arbPerson.arbitrary)
+      person <-  arbPerson.arbitrary
       money <-  arbMoney.arbitrary
-    } yield Expense.unsafeCreate(personsList.head, money, personsList.tail )
+    } yield Expense.unsafeCreate(person, money, personsList )
   }
 
   implicit val payeeDebtArb: Arbitrary[DebtByPayee] = Arbitrary {

@@ -1,6 +1,8 @@
 package fpfinal.model
 
 import cats._
+import cats.data.NonEmptyChain
+import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
 import fpfinal.app.Configuration.IsValid
 import fpfinal.common.Validations._
@@ -51,7 +53,11 @@ class Money private (_cents: Int) {
     * For simplicity we don't care about losing cents. For example, dividing 1 dollar
     * by 3 should yield 33 cents.
     */
-  def divideBy(n: Int): Option[Money] = ???
+  def divideBy(n: Int): Option[Money] =
+    n match {
+      case 0 => None
+      case _ => Some(new Money(_cents / n))
+    }
 
   /**
    * @return a string representation of this money amount in dollars, with two decimal places
@@ -77,7 +83,8 @@ object Money {
     * - Amount should be non-negative
     */
   def dollars(amount: Double): IsValid[Money] =
-    ???
+    if(amount >= 0) Valid(new Money((amount*100).toInt))
+    else Invalid(NonEmptyChain("Money amount can not be negative"))
 
   implicit val monoidMoney: Monoid[Money] = Monoid.instance(zero, _ plus _)
 
@@ -90,5 +97,5 @@ object Money {
     * TODO #4: Implement and instance of Order for Money that compares its cents.
     * Use the given Order instance for comparing any Int values.
     */
-  implicit def orderMoney(implicit orderInt: Order[Int]): Order[Money] = ???
+  implicit def orderMoney(implicit orderInt: Order[Int]): Order[Money] = Order.by(_.cents)
 }

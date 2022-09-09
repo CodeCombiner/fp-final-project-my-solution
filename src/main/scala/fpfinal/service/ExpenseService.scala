@@ -4,7 +4,7 @@ import cats._
 import cats.data._
 import cats.implicits._
 import fpfinal.model.{DebtByPayer, Expense}
-import fpfinal.service.ExpenseService.ExpenseOp
+import fpfinal.service.ExpenseService.{ExpenseOp, ExpenseState}
 
 /**
  * A trait for computing the debts of all the people involved in the expenses.
@@ -78,12 +78,29 @@ trait LiveExpenseService extends ExpenseService {
     /**
      * Adds an expense to the state.
      */
-    override def addExpense(expense: Expense): ExpenseOp[Expense] = ???
+    override def addExpense(expense: Expense): ExpenseOp[Expense] = State {
+      state => {
+        val newExpences = expense :: state.expenses
+        (state.copy(expenses = newExpences), expense)
+        // Needed to use already created method
+        // (state.addExpense(expense), expense)
+      }
+    }
 
     /**
      * Computes the debt for all the people involved, based on the expenses
      * there are in the state.
      */
-    override def computeDebt(): ExpenseOp[DebtByPayer] = ???
+    override def computeDebt(): ExpenseOp[DebtByPayer] = {
+      State {
+        state => {
+          (state,
+            state.expenses.foldLeft(DebtByPayer.monoidDebtByPayer.empty)
+            ((x, y) => x.combine(DebtByPayer.fromExpense(y).simplified)))
+        }
+      }
+      //Shorter way
+      // State.inspect(_.expernses.foldMap(DebtByPayer.fromExpernse).simplified)
+    }
   }
 }
